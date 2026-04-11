@@ -1,6 +1,7 @@
 const UserProfile = require('../models/UserProfile');
 
-// @desc    Get user profile or create a new one if it doesn't exist
+// @desc    Get or create user profile. Returns isNewUser flag so frontend knows
+//          whether to show onboarding or restore the returning user's persona.
 // @route   POST /api/users
 const getUserProfile = async (req, res) => {
     try {
@@ -12,17 +13,19 @@ const getUserProfile = async (req, res) => {
 
         // Try to find the user
         let user = await UserProfile.findOne({ username });
+        let isNewUser = false;
 
-        // If user doesn't exist, create a new "everyday" user
+        // If user doesn't exist, create a new profile
         if (!user) {
+            isNewUser = true;
             user = await UserProfile.create({
                 username,
-                personaTier: 'everyday',
+                personaTier: 'Beginner',
                 complexityScore: 2
             });
         }
 
-        res.status(200).json(user);
+        res.status(200).json({ ...user.toObject(), isNewUser });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });

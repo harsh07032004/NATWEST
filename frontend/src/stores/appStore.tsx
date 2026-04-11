@@ -19,7 +19,6 @@ import { buildResponseFromInsight, reRenderWithPersona } from '../utils/response
 import {
   getUserId, getConversationId, getSessionId,
   newMessageId,
-  savePersona, loadPersona, markOnboardingDone, isOnboardingDone,
   startNewConversation as sessionStartNew, setUserId, getIsLoggedIn,
   clearSession,
 } from '../services/sessionService';
@@ -28,7 +27,7 @@ import {
   loadPersistedMessages, clearPersistedMessages,
 } from '../services/mongoService';
 
-type AppView = 'login' | 'upload' | 'onboarding' | 'transition' | 'chat';
+type AppView = 'booting' | 'login' | 'upload' | 'onboarding' | 'transition' | 'chat';
 
 interface AppContextState {
   // Persona
@@ -80,25 +79,18 @@ const AppContext = createContext<AppContextState | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // ── Session IDs ──────────────────────────────────────────────────
-  const [userId, setUserIdState] = useState(getUserId());
-  const conversationId = useRef(getConversationId()).current;
+  const [userId, setUserIdState]             = useState(getUserId());
+  const [conversationId, setConversationId]  = useState(getConversationId());
   const sessionId = useRef(getSessionId()).current;
-
-  // ── Initial persona ──────────────────────────────────────────────
-  const resolveInitialPersona = (): Persona => {
-    const saved = loadPersona();
-    const valid: Persona[] = ['Beginner', 'Everyday', 'SME', 'Executive', 'Analyst', 'Compliance'];
-    return (valid.includes(saved as Persona) ? saved : 'Beginner') as Persona;
-  };
 
   // ── Initial view ─────────────────────────────────────────────────
   const resolveInitialView = (): AppView => {
     if (!getIsLoggedIn()) return 'login';
-    return isOnboardingDone() ? 'chat' : 'upload';
+    return 'booting'; // Will resolve after fetching profile
   };
 
   // ── State ────────────────────────────────────────────────────────
-  const [currentPersona, setCurrentPersonaRaw] = useState<Persona>(resolveInitialPersona);
+  const [currentPersona, setCurrentPersonaRaw] = useState<Persona>('Beginner');
   const [datasetRef, setDatasetRef] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -107,6 +99,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [voiceMode, setVoiceMode] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
+
+  // ── Fetch Profile on Mount ────────────────────────────────────────
+  useEffect(() => {
+    if (!getIsLoggedIn() || !userId) return;
+
+    const fetchProfile = async () => {
+      try {
+        const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${CHAT_API_URL}/api/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: userId }),
+        });
+        
+        if (res.ok) {
+          const profile = await res.json();
+          if (profile.hasCompletedOnboarding) {
+            setCurrentPersonaRaw((profile.personaTier as Persona) || 'Beginner');
+            if (profile.datasetRef) setDatasetRef(profile.datasetRef);
+            setAppView('chat');
+          } else {
+            setAppView('upload');
+          }
+        } else {
+          setAppView('login');
+        }
+      } catch (err) {
+        console.warn('[appStore] Profile fetch failed, falling back to chat');
+        setAppView('chat');
+      }
+    };
+    
+    if (appView === 'booting') {
+      fetchProfile();
+    }
+  }, [userId, appView]);
 
   // ── Restore messages on mount ─────────────────────────────────────
   useEffect(() => {
@@ -118,24 +146,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setMessages(cached);
     }
 
-    // Step 2: try to hydrate from backend (non-blocking)
+    // Step 2: hydrate from MongoDB (non-blocking) — restores BOTH user + assistant
     (async () => {
       setIsRestoring(true);
       try {
         const historyRes = await loadHistory(conversationId, userId);
         const { messages: apiMsgs } = historyRes;
+
         if (apiMsgs && apiMsgs.length > 0) {
-          const restored = apiMsgs
-            .filter(m => m.role === 'assistant' && m.ml_output && Object.keys(m.ml_output).length > 0)
-            .map(m => ({
-              id: m.message_id,
-              sender: 'ai' as const,
-              rawInsight: m.ml_output as MLOutputContract,
-              response: buildResponseFromInsight(currentPersona, m.ml_output as MLOutputContract),
-              rawQuery: m.user_query,
-              isLoading: false,
-            }));
-          if (restored.length > cached.length) {
+          // Rebuild the full interleaved message list in chronological order
+          const restored: ChatMessage[] = apiMsgs
+            .filter(m => m.role === 'user' || (m.role === 'assistant' && m.ml_output && Object.keys(m.ml_output).length > 0))
+            .map(m => {
+              if (m.role === 'user') {
+                return {
+                  id:       m.message_id,
+                  sender:   'user' as const,
+                  text:     m.user_query,
+                  rawQuery: m.user_query,
+                  isLoading: false,
+                };
+              }
+              // assistant
+              return {
+                id:         m.message_id,
+                sender:     'ai' as const,
+                rawInsight: m.ml_output as MLOutputContract,
+                response:   buildResponseFromInsight(currentPersona, m.ml_output as MLOutputContract),
+                rawQuery:   m.user_query,
+                isLoading:  false,
+              };
+            });
+
+          if (restored.length > 0) {
             setMessages(restored);
             persistMessages(restored);
           }
@@ -159,24 +202,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [messages]);
 
   // ── addMessage ────────────────────────────────────────────────────
+  // Only persist USER messages immediately — AI messages are persisted
+  // in updateMessage() once they are fully loaded (isLoading: false).
+  // This prevents saving empty AI placeholders to MongoDB.
   const addMessage = useCallback(
     (m: ChatMessage) => {
-      setMessages(prev => {
-        const next = [...prev, m];
+      setMessages(prev => [...prev, m]);
+      if (m.sender === 'user') {
         void persistMsg(m, userId, conversationId);
-        return next;
-      });
+      }
     },
     [userId, conversationId],
   );
 
   // ── updateMessage ─────────────────────────────────────────────────
+  // Persist AI messages only when they are fully resolved (isLoading → false)
   const updateMessage = useCallback(
     (id: string, partial: Partial<ChatMessage>) => {
       setMessages(prev => {
         const next = prev.map(msg => msg.id === id ? { ...msg, ...partial } : msg);
         const updated = next.find(m => m.id === id);
-        if (updated && updated.sender === 'ai' && partial.isLoading === false) {
+        if (updated && updated.sender === 'ai' && partial.isLoading === false && updated.rawInsight) {
           void persistMsg(updated, userId, conversationId);
         }
         return next;
@@ -195,7 +241,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const switchPersona = useCallback(
     (newPersona: Persona) => {
       setCurrentPersonaRaw(newPersona);
-      savePersona(newPersona);
 
       setMessages(prev => {
         const updates = reRenderWithPersona(prev, newPersona);
@@ -213,7 +258,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const setCurrentPersona = useCallback((p: Persona) => {
     setCurrentPersonaRaw(p);
-    savePersona(p);
   }, []);
 
   // ── Onboarding completion ─────────────────────────────────────────
@@ -221,8 +265,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     (answers: OnboardingAnswers, persona: Persona) => {
       setOnboardingAnswers(answers);
       setCurrentPersonaRaw(persona);
-      savePersona(persona);
-      markOnboardingDone();
 
       void startConversation({
         conversation_id: conversationId,
@@ -255,33 +297,66 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [userId, currentPersona, datasetRef]);
 
   // ── Login ────────────────────────────────────────────────────────
+  const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+
   const loginUser = useCallback(async (username: string) => {
     setUserId(username);
     setUserIdState(username);
-    const { listConversations } = await import('../services/mongoService');
-    const convs = await listConversations(username);
-    if (convs && convs.length > 0) {
+
+    // Step 1: Create or fetch the UserProfile from MongoDB
+    let isNewUser = true;
+    let savedPersona: Persona = 'Beginner';
+    try {
+      const profileRes = await fetch(`${CHAT_API_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      });
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        isNewUser = profile.isNewUser;
+        if (!isNewUser && profile.personaTier) {
+          savedPersona = profile.personaTier as Persona;
+        }
+      }
+    } catch {
+      // Backend down — treat as new user, onboarding will run locally
+    }
+
+    // Step 2: Check for existing conversations in MongoDB
+    const { listConversations: listConvs } = await import('../services/mongoService');
+    const convs = await listConvs(username);
+
+    if (!isNewUser && convs && convs.length > 0) {
+      // RETURNING USER — restore their last conversation
+      const lastConvId = convs[0].conversation_id;
       if (convs[0].dataset_ref) setDatasetRef(convs[0].dataset_ref);
-      localStorage.setItem('t2d_conv_id', convs[0].conversation_id);
+      // Write the conv_id to localStorage BEFORE the reload so getConversationId() picks it up
+      localStorage.setItem('t2d_conv_id', lastConvId);
+      setConversationId(lastConvId);
     } else {
+      // NEW USER — clear stale state so they go through full onboarding
+      clearPersistedMessages();
       const newId = sessionStartNew();
+      setConversationId(newId);
       await startConversation({
         conversation_id: newId,
         user_id: username,
-        user_type: currentPersona,
-        dataset_ref: datasetRef,
+        user_type: 'Beginner',
+        dataset_ref: null,
         title: 'New Conversation',
         created_at: new Date().toISOString(),
         messages: [],
       });
     }
-    clearPersistedMessages();
+
     window.location.reload();
-  }, [currentPersona, datasetRef]);
+  }, []);
 
   // ── Logout ────────────────────────────────────────────────────────
   const logoutUser = useCallback(() => {
     clearSession();
+    clearPersistedMessages(); // wipe message cache so next user starts fresh
     window.location.reload();
   }, []);
 

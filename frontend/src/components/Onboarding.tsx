@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../stores/appStore';
 import { Sparkles } from 'lucide-react';
 import type { OnboardingAnswers, Persona } from '../types';
+import { getUserId } from '../services/sessionService';
 
-const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:3001';
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
 
 // ================================================================
 // QUESTION DATA
@@ -59,9 +60,11 @@ const SLIDE_2_QUESTIONS: Question[] = [
 // PERSONA RESOLUTION FROM BACKEND
 // ================================================================
 
-async function fetchPersonaFromBackend(answers: Record<string, string>): Promise<Persona> {
+async function fetchPersonaFromBackend(answers: Record<string, string>, datasetRef: string | null): Promise<Persona> {
   const payload = {
-    responses: Object.entries(answers).map(([id, value]) => ({ id, value }))
+    responses: Object.entries(answers).map(([id, value]) => ({ id, value })),
+    user_id: getUserId(),
+    datasetRef
   };
 
   try {
@@ -112,7 +115,7 @@ function useTypewriter(text: string, speed = 28) {
 // ================================================================
 
 export const Onboarding: React.FC = () => {
-  const { completeOnboarding, setAppView, setOnboardingAnswers } = useAppContext();
+  const { completeOnboarding, setAppView, setOnboardingAnswers, datasetRef } = useAppContext();
   const [slide, setSlide] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,7 +138,7 @@ export const Onboarding: React.FC = () => {
         instinct: answers.instinct as any,
         visual: answers.visual as any,
       };
-      const persona = await fetchPersonaFromBackend(answers);
+      const persona = await fetchPersonaFromBackend(answers, datasetRef);
       setOnboardingAnswers(finalAnswers);
       completeOnboarding(finalAnswers, persona);
       setAppView('transition');

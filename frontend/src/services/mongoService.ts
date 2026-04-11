@@ -17,7 +17,7 @@
 
 import type { UserConversationRecord, ConversationMessage, ChatMessage } from '../types';
 
-const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:3001';
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
 
 const CONVS_KEY    = (userId: string) => `t2d_convs_${userId}`;
 const MESSAGES_KEY = 't2d_messages';
@@ -54,7 +54,6 @@ export async function startConversation(record: UserConversationRecord): Promise
         body: JSON.stringify(record),
       });
       if (res.ok) {
-        console.log('[mongoService] Conversation created on backend');
         return;
       }
     } catch (err) {
@@ -100,7 +99,6 @@ export async function saveMessage(conversation_id: string, userId: string, messa
         body: JSON.stringify({ conversation_id, message }),
       });
       if (res.ok) {
-        console.log(`[mongoService] Message saved to backend array`);
         return;
       }
     } catch (err) {

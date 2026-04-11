@@ -1,8 +1,45 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+/**
+ * LLM SERVICE (Groq) — Intent classification, block simplification, conversational handler.
+ * Uses the Groq REST API (OpenAI-compatible) with llama-3.3-70b-versatile.
+ */
+
 import type { GeminiIntent, Persona } from '../types';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+// ── Groq helper ─────────────────────────────────────────────────
+async function groqChat(
+  systemPrompt: string,
+  userPrompt: string,
+  jsonMode = false,
+): Promise<string> {
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.2,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq API ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() ?? '';
+}
 
 const FALLBACK_INTENT: GeminiIntent = {
   query_type: 'Descriptive',
@@ -20,19 +57,13 @@ const FALLBACK_INTENT: GeminiIntent = {
 // ================================================================
 
 export async function classifyIntent(query: string, persona: Persona): Promise<GeminiIntent> {
-  if (!API_KEY) {
-    console.warn('[geminiService] No API key — using keyword fallback.');
+  if (!GROQ_API_KEY) {
+    console.warn('[llmService] No Groq API key — using keyword fallback.');
     return fallbackClassify(query);
   }
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    });
-
-    const prompt = `
-You are an intent classifier for a Talk-to-Data enterprise analytics system.
+    const systemPrompt = `You are an intent classifier for a Talk-to-Data enterprise analytics system.
 The user is asking a data question. The current user persona is: ${persona}.
 
 Persona descriptions:
@@ -51,7 +82,7 @@ Query types:
 
 Visual options: Gauge | Line | Bar | DivergingBar | Waterfall | Table | Sparkline | Treemap | Bullet | KPI | Pie | Scatter | StackedBar | None
 
-Respond with ONLY a valid JSON object:
+You MUST respond with ONLY a valid JSON object with these exact keys:
 {
   "query_type": "Descriptive | Comparative | Diagnostic | Conversational | Unknown",
   "metric": "specific metric name detected, or 'General'",
@@ -60,27 +91,22 @@ Respond with ONLY a valid JSON object:
   "confidence_score": 0.95,
   "user_goal": "brief description of what the user is trying to achieve",
   "next_action": "short suggestion for what to do next"
-}
+}`;
 
-User Query: "${query}"
-`;
-
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
-
+    const responseText = await groqChat(systemPrompt, `User Query: "${query}"`, true);
     const parsed = JSON.parse(responseText);
     if (parsed.query_type && parsed.suggested_visual) {
       return parsed as GeminiIntent;
     }
-    throw new Error('Invalid schema from Gemini');
+    throw new Error('Invalid schema from Groq');
   } catch (err) {
-    console.error('[geminiService] classifyIntent failed:', err);
+    console.error('[llmService] classifyIntent failed:', err);
     return fallbackClassify(query);
   }
 }
 
 // ================================================================
-// KEYWORD FALLBACK (no API key or Gemini error)
+// KEYWORD FALLBACK (no API key or Groq error)
 // Maps common query patterns to intent + visual
 // ================================================================
 
@@ -176,7 +202,7 @@ function detectMetric(q: string): string {
 
 // ================================================================
 // BLOCK SIMPLIFIER (for "?" confusion button on response blocks)
-// Receives full data context so Gemini can explain real numbers.
+// Receives full data context so Groq can explain real numbers.
 // ================================================================
 
 export interface SimplifyContext {
@@ -203,7 +229,7 @@ export async function simplifyBlock(
     Compliance: 'Give a literal, auditable explanation referencing exact values and sources. No inference.',
   };
 
-  // ── Build a smart fallback from data even when Gemini is unavailable ──
+  // ── Build a smart fallback from data even when Groq is unavailable ──
   const smartFallback = (): string => {
     if (!context) return `Here is what this means: ${blockContent}`;
 
@@ -235,9 +261,9 @@ export async function simplifyBlock(
     return `In simple terms: ${blockContent}`;
   };
 
-  if (!API_KEY) return smartFallback();
+  if (!GROQ_API_KEY) return smartFallback();
 
-  // ── Format context for Gemini ─────────────────────────────────────
+  // ── Format context for Groq ─────────────────────────────────────
   const metricsText = context?.metrics?.map(m => {
     const delta = m.prev_value != null ? ` (was ${m.prev_value.toLocaleString()} ${m.unit ?? ''}, changed by ${(m.value - m.prev_value).toLocaleString()})` : '';
     return `• ${m.label}: ${m.value.toLocaleString()} ${m.unit ?? ''}${delta}`;
@@ -252,73 +278,57 @@ export async function simplifyBlock(
     : null;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const prompt = `You are a data simplification assistant for Talk2Data.
-
+    const systemPrompt = `You are a data simplification assistant for Talk2Data.
 A user clicked "Help me understand" on a specific block inside a data analysis response.
+User persona: ${persona} — ${STYLE_GUIDE[persona]}
+Explain the block text in 2-3 sentences. Reference actual numbers. Do NOT repeat the block text. Adapt tone to the persona. Reply with ONLY the explanation text.`;
 
-=== THE USER'S ORIGINAL QUESTION ===
+    const userPrompt = `=== USER'S ORIGINAL QUESTION ===
 "${context?.query ?? 'a data question'}"
 
-=== WHAT THE ANALYSIS FOUND ===
+=== ANALYSIS FOUND ===
 ${context?.mainSummary ?? blockContent}
 
 === KEY METRICS ===
 ${metricsText}
 
-${breakdownText ? `=== BREAKDOWN BY CATEGORY ===\n${breakdownText}\n` : ''}
-${anomalyText ? `=== ANOMALIES / UNUSUAL EVENTS ===\n${anomalyText}\n` : ''}
+${breakdownText ? `=== BREAKDOWN ===\n${breakdownText}\n` : ''}
+${anomalyText ? `=== ANOMALIES ===\n${anomalyText}\n` : ''}
 
-=== THE SPECIFIC BLOCK THE USER WANTS EXPLAINED ===
-Block type: ${blockType}
-Block text: "${blockContent}"
+=== BLOCK TO EXPLAIN ===
+Type: ${blockType}
+Text: "${blockContent}"`;
 
-=== USER PERSONA ===
-${persona} — ${STYLE_GUIDE[persona]}
-
-=== YOUR TASK ===
-Explain the block text to this user in 2-3 sentences.
-- Reference the actual numbers from the data above where they help the explanation.
-- Do NOT just repeat the block text back word-for-word.
-- Make it feel like a knowledgeable colleague is explaining it.
-- Adapt tone and complexity to the persona.
-- Reply with ONLY the explanation text, no labels, no formatting.`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = await groqChat(systemPrompt, userPrompt);
     return text || smartFallback();
   } catch (err) {
-    console.error('[simplifyBlock] Gemini call failed:', err);
+    console.error('[simplifyBlock] Groq call failed:', err);
     return smartFallback();
   }
 }
 
 // ================================================================
 // CONVERSATIONAL HANDLER
-// Directly responds to greetings and meta-questions via Gemini
+// Directly responds to greetings and meta-questions via Groq
 // ================================================================
 
 export async function handleConversationalQuery(query: string, persona: Persona): Promise<string> {
   const fallback = "Hello! I am your Talk2Data assistant. I can analyze revenue, costs, churn, and answer deep operational questions. What can I look up for you today?";
   
-  if (!API_KEY) return fallback;
+  if (!GROQ_API_KEY) return fallback;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const prompt = `You are the Talk2Data enterprise AI assistant.
+    const systemPrompt = `You are the Talk2Data enterprise AI assistant.
 The active interface persona is: ${persona}.
 Your goal is to answer data questions for the user.
-The user just sent a conversational or non-analytical message: "${query}"
-
-Respond nicely and conversationally in 1-2 sentences. 
+Respond nicely and conversationally in 1-2 sentences.
 Remind the user gently that you can plot charts, run diagnostics, and compare periods.
 Do NOT use markdown. Do NOT use fake data. Reply as an AI assistant.`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = await groqChat(systemPrompt, `The user just said: "${query}"`);
     return text || fallback;
   } catch (err) {
-    console.error('[handleConversationalQuery] failed:', err);
+    console.error('[handleConversationalQuery] Groq failed:', err);
     return fallback;
   }
 }
