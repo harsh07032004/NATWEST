@@ -4,6 +4,30 @@ import numpy as np
 from src.core.schema import base_response
 from src.models.utils import load_csv, apply_filters, resolve_secure_path, clean_dataframe, build_ui_payload
 
+# ================== 🔥 PAYLOAD NORMALIZER ==================
+def normalize_payload(payload):
+    if "data_blueprint" not in payload:
+        payload["data_blueprint"] = {
+            "dataset": payload.get("dataset_ref"),
+            "schema_mapping": payload.get("target_schema", {}),
+            "execution_scope": {
+                "filters": [],
+                "time_frames": {
+                    "current": {
+                        "start": "2000-01-01",
+                        "end": "2100-01-01"
+                    }
+                }
+            }
+        }
+
+    if "analytical_intent" not in payload:
+        payload["analytical_intent"] = {
+            "query_type": ["descriptive"],
+            "intent": payload.get("query", "")
+        }
+
+    return payload
 
 def descriptive_model(payload):
     """
