@@ -39,6 +39,7 @@ We use lightning-fast Groq LLMs *only* to understand human intent (the "What"). 
 - **Universal CSV Loader:** Seamlessly handles ISO-8859, UTF-8, and dirty encodings without requiring users to pre-clean their data.
 
 ### 2. Multi-Tiered Advanced Analytics
+- **Descriptive Analysis:** Instant multi-dimensional aggregation that enables you to summarize massive datasets effortlessly. Bolt dynamically groups and calculates complex temporal and categorical metrics (e.g., *"Show me a breakdown of total sales by region and user category"*).
 - **Diagnostic Analysis (Root Cause):** Uses automatic **Z-Score Anomaly Detection** to scan datasets for statistical outliers. It doesn't just flag them; it runs a contribution analysis to tell you *why* the anomaly happened (e.g., *"Sales dipped 15% due to a massive drop in the Technology sector in the North region"*).
 - **Predictive Analysis:** Implements a rolling **6-Month Multi-Period Forecast** that runs over historical time-series data. It automatically calculates the Mean Absolute Percentage Error (MAPE) to grade its own confidence.
 - **Comparative Analysis (PoP):** Deep Period-Over-Period delta tracking to instantly measure growth or decay between discrete timeframes.
