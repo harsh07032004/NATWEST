@@ -201,7 +201,7 @@ cd frontend && npm run dev
 Navigate to [**http://localhost:5173**](http://localhost:5173) to enter the platform. 
 
 > **Note on Testing Data:** 
-> For evaluation and testing purposes, we have included sample datasets in the `execution_engine/data/` folder (e.g., `Superstore.csv` and `user_transactions_demo.csv`). When uploading a file in the UI to run your initial queries, please use this provided example data to experience the full range of Bolt's analytical capabilities.
+> For evaluation and testing purposes, we have included sample datasets in the `execution_engine/data/` folder (e.g., `Superstore.csv`). When uploading a file in the UI to run your initial queries, please use this provided example data to experience the full range of Bolt's analytical capabilities.
 ---
 
 ## Business Impact for NatWest
