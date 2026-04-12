@@ -19,7 +19,7 @@ const app = express();
 
 const allowedOrigins = [
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
-  "https://natwest-frontend.onrender.com", // 👈 YOUR FRONTEND URL
+  "https://talktodata-mt63.onrender.com", // 👈 YOUR FRONTEND URL
 ];
 
 const CORS_OPTIONS = {
