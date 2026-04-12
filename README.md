@@ -5,6 +5,12 @@
   
   **Your AI-powered data analyst. Talk to your data in plain language, eliminate AI hallucinations, and get instant, rigorous, persona-aware insights.**
 
+  <br />
+  <a href="https://talktodata-mt63.onrender.com/">
+    <img src="https://img.shields.io/badge/LIVE_DEMO-ACCESS_ENTERPRISE_PLATFORM_HERE-2ea44f?style=for-the-badge" alt="Live Demo" />
+  </a>
+  <br />
+
   [![License](https://img.shields.io/badge/License-Internal-blue.svg)](https://opensource.org/licenses/MIT)
   [![React](https://img.shields.io/badge/React-19.0-61dafb.svg?logo=react)](https://reactjs.org/)
   [![Node.js](https://img.shields.io/badge/Node.js-18.x-339933.svg?logo=nodedotjs)](https://nodejs.org/)
@@ -147,7 +153,9 @@ Natwest-Hackathon/
 
 ## Quick Start & Deployment
 
-We've made booting a 3-tier enterprise platform as easy as running a single file.
+We've made booting a 3-tier enterprise platform locally as easy as running a single file.
+
+> **LIVE DEMO:** Skip the local setup and experience the deployed application immediately here: **[https://talktodata-mt63.onrender.com/](https://talktodata-mt63.onrender.com/)**
 
 ### Prerequisites
 - **Node.js** v18+ & **Python** 3.10+
@@ -192,6 +200,8 @@ cd frontend && npm run dev
 
 Navigate to [**http://localhost:5173**](http://localhost:5173) to enter the platform. 
 
+> **Note on Testing Data:** 
+> For evaluation and testing purposes, we have included sample datasets in the `execution_engine/data/` folder (e.g., `Superstore.csv` and `user_transactions_demo.csv`). When uploading a file in the UI to run your initial queries, please use this provided example data to experience the full range of Bolt's analytical capabilities.
 ---
 
 ## Business Impact for NatWest
