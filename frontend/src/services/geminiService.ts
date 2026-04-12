@@ -42,7 +42,7 @@ async function groqChat(
 }
 
 const FALLBACK_INTENT: GeminiIntent = {
-  query_type: 'Descriptive',
+  query_type: ['Descriptive'],
   metric: 'General',
   persona_tone: 'Supportive',
   suggested_visual: 'Bar',
@@ -82,12 +82,17 @@ Query types:
 
 Visual options: Gauge | Line | Bar | DivergingBar | Waterfall | Table | Sparkline | Treemap | Bullet | KPI | Pie | Scatter | StackedBar | None
 
+IMPORTANT: A query can belong to MULTIPLE categories. For example:
+- "What were the sales last month and why did they drop?" → ["Descriptive", "Diagnostic"]
+- "Compare regions and show the trend" → ["Comparative", "Descriptive"]
+- A simple greeting → ["Conversational"]
+
 You MUST respond with ONLY a valid JSON object with these exact keys:
 {
-  "query_type": "Descriptive | Comparative | Diagnostic | Conversational | Unknown",
+  "query_type": ["array of applicable types from: Descriptive, Comparative, Diagnostic, Conversational, Unknown"],
   "metric": "specific metric name detected, or 'General'",
   "persona_tone": "Supportive | Efficient | Analytical | Authoritative | Forensic | Strategic",
-  "suggested_visual": "best chart type for this persona and query. Use 'None' for Conversational.",
+  "suggested_visual": "best chart type for the PRIMARY query type and persona. Use 'None' for Conversational.",
   "confidence_score": 0.95,
   "user_goal": "brief description of what the user is trying to achieve",
   "next_action": "short suggestion for what to do next"
@@ -96,6 +101,10 @@ You MUST respond with ONLY a valid JSON object with these exact keys:
     const responseText = await groqChat(systemPrompt, `User Query: "${query}"`, true);
     const parsed = JSON.parse(responseText);
     if (parsed.query_type && parsed.suggested_visual) {
+      // Normalize: if LLM returned a single string, wrap it in an array
+      if (typeof parsed.query_type === 'string') {
+        parsed.query_type = [parsed.query_type];
+      }
       return parsed as GeminiIntent;
     }
     throw new Error('Invalid schema from Groq');
@@ -129,7 +138,7 @@ function detectExplicitVisual(q: string): GeminiIntent['suggested_visual'] | nul
 
 function fallbackClassify(query: string): GeminiIntent {
   const q = query.toLowerCase();
-  let queryType = FALLBACK_INTENT.query_type;
+  const types: Set<string> = new Set();
   let visual = FALLBACK_INTENT.suggested_visual;
   let metric = 'performance';
 
@@ -138,11 +147,12 @@ function fallbackClassify(query: string): GeminiIntent {
   if (explicitVisual) {
     visual = explicitVisual;
     // Composition charts imply descriptive
-    if (explicitVisual === 'Pie' || explicitVisual === 'Treemap') queryType = 'Descriptive';
+    if (explicitVisual === 'Pie' || explicitVisual === 'Treemap') types.add('Descriptive');
+    if (types.size === 0) types.add('Descriptive');
     // Return early with explicit flag so persona overrides are skipped
     return {
       ...FALLBACK_INTENT,
-      query_type: queryType,
+      query_type: [...types] as GeminiIntent['query_type'],
       suggested_visual: visual,
       metric: detectMetric(q),
       confidence_score: 0.70,
@@ -150,8 +160,8 @@ function fallbackClassify(query: string): GeminiIntent {
     };
   }
 
-  // Query type detection
-  if (
+  // ── Multi-type detection — accumulate all applicable categories ──
+  const isConversational =
     /^(hi|hey|hello)\b/.test(q) ||
     q.includes('how are you') ||
     q.includes('who are you') ||
@@ -159,20 +169,44 @@ function fallbackClassify(query: string): GeminiIntent {
     /what.*can you/.test(q) ||
     /what.*questions/.test(q) ||
     /can.*i ask/.test(q) ||
-    q.includes('thank')
-  ) {
-    queryType = 'Conversational'; visual = 'None';
-  } else if (q.includes('why') || q.includes('driver') || q.includes('cause') || q.includes('spike') || q.includes('drop') || q.includes('declined')) {
-    queryType = 'Diagnostic'; visual = 'Waterfall';
-  } else if (q.includes('vs') || q.includes('versus') || q.includes('compare') || q.includes('difference') || q.includes('better') || q.includes('higher') || q.includes('lower')) {
-    queryType = 'Comparative'; visual = 'DivergingBar';
-  } else if (q.includes('trend') || q.includes('over time') || q.includes('quarter') || q.includes('month')) {
-    queryType = 'Descriptive'; visual = 'Line';
-  } else if (q.includes('breakdown') || q.includes('composition') || q.includes('share') || q.includes('split')) {
-    queryType = 'Descriptive'; visual = 'Pie';
-  } else if (q.includes('status') || q.includes('current') || q.includes('today') || q.includes('now')) {
-    queryType = 'Descriptive'; visual = 'KPI';
+    q.includes('thank');
+
+  if (isConversational) {
+    return {
+      ...FALLBACK_INTENT,
+      query_type: ['Conversational'],
+      suggested_visual: 'None',
+      metric,
+      confidence_score: 0.65,
+      explicit_visual_request: false,
+    };
   }
+
+  // Diagnostic signals
+  if (q.includes('why') || q.includes('driver') || q.includes('cause') || q.includes('spike') || q.includes('drop') || q.includes('declined') || q.includes('root cause')) {
+    types.add('Diagnostic'); visual = 'Waterfall';
+  }
+
+  // Comparative signals
+  if (q.includes('vs') || q.includes('versus') || q.includes('compare') || q.includes('difference') || q.includes('better') || q.includes('higher') || q.includes('lower')) {
+    types.add('Comparative'); visual = types.has('Diagnostic') ? 'Waterfall' : 'DivergingBar';
+  }
+
+  // Descriptive signals
+  if (q.includes('trend') || q.includes('over time') || q.includes('quarter') || q.includes('month') ||
+      q.includes('breakdown') || q.includes('composition') || q.includes('share') || q.includes('split') ||
+      q.includes('status') || q.includes('current') || q.includes('today') || q.includes('now') ||
+      q.includes('total') || q.includes('show') || q.includes('what')) {
+    types.add('Descriptive');
+    if (!types.has('Diagnostic') && !types.has('Comparative')) {
+      if (q.includes('trend') || q.includes('over time') || q.includes('month')) visual = 'Line';
+      else if (q.includes('breakdown') || q.includes('composition') || q.includes('share')) visual = 'Pie';
+      else if (q.includes('status') || q.includes('current') || q.includes('today')) visual = 'KPI';
+    }
+  }
+
+  // Default to Descriptive if nothing matched
+  if (types.size === 0) types.add('Descriptive');
 
   // Metric detection
   if (q.includes('revenue') || q.includes('sales')) metric = 'revenue';
@@ -183,7 +217,7 @@ function fallbackClassify(query: string): GeminiIntent {
 
   return {
     ...FALLBACK_INTENT,
-    query_type: queryType,
+    query_type: [...types] as GeminiIntent['query_type'],
     suggested_visual: visual,
     metric,
     confidence_score: 0.65,

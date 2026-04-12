@@ -57,15 +57,25 @@ export async function getInsightResponse(
   query: string,
   intent: GeminiIntent,
   persona: Persona,
+  datasetRef: string,
 ): Promise<MLOutputContract> {
   let ml: MLOutputContract;
 
   try {
-    ml = await fetchFromBackend(query);
+    ml = await fetchFromBackend(query, datasetRef);
   } catch (err) {
     console.error('[insightAdapter] Backend query failed:', err);
     throw err; // Let the caller (PresentationShell) handle the error display
   }
+
+  // Merge query_type: union of frontend classifier + engine response
+  // This ensures tags show all detected intents even if one side missed one
+  const classifierTypes = (intent.query_type ?? []).map(t => t.toLowerCase());
+  const engineTypes = (ml.query_type ?? []).map(t => t.toLowerCase());
+  const mergedSet = new Set([...engineTypes, ...classifierTypes]);
+  // Remove 'unknown'; capitalize for display
+  mergedSet.delete('unknown');
+  ml.query_type = [...mergedSet].map(t => t.charAt(0).toUpperCase() + t.slice(1));
 
   // Apply persona-specific chart selection rules
   ml = applyPersonaRules(ml, intent, persona);
@@ -87,11 +97,11 @@ export async function getInsightResponse(
 // LLM orchestrator → Python execution engine → Superstore.csv
 // ================================================================
 
-async function fetchFromBackend(query: string): Promise<MLOutputContract> {
+async function fetchFromBackend(query: string, dataset_ref: string): Promise<MLOutputContract> {
   const response = await fetch(`${CHAT_API_URL}/api/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, dataset_ref }),
   });
 
   if (!response.ok) {
@@ -230,8 +240,14 @@ function adaptEngineOutput(raw: Record<string, unknown>): MLOutputContract {
   const medium   = rawLevels.medium   || `${metaLine}.${changeStr} Top drivers: ${diagnostics[0] ?? 'see breakdown'}.`;
   const advanced  = rawLevels.advanced || `${metaLine}.${changeStr} ${diagnostics.join(' | ')}`;
 
+  // Normalize query_type: engine may return array or string
+  const rawQT = raw.query_type;
+  const query_type: string[] = Array.isArray(rawQT)
+    ? rawQT.map(String)
+    : [String(rawQT ?? 'descriptive')];
+
   return {
-    query_type:     [String((raw.query_type as string) ?? 'descriptive')],
+    query_type,
     key_metrics,
     trend,
     breakdown,
@@ -269,6 +285,7 @@ function applyPersonaRules(
   persona: Persona,
 ): MLOutputContract {
   const primaryQT = ml.query_type[0] ?? 'Descriptive';
+  const secondaryQTs = ml.query_type.slice(1);
   const personaMap = PERSONA_CHART_MAP[persona];
 
   // If user explicitly requested a chart type, respect it — skip persona rules
@@ -282,8 +299,14 @@ function applyPersonaRules(
 
   const targetType = personaMap[primaryQT] ?? personaMap.default ?? 'Bar';
 
-  // Get richer chart recommendations per persona
+  // Build recommendations from primary AND secondary query types
   const recs = buildRecommendations(persona, primaryQT as any);
+  for (const sqt of secondaryQTs) {
+    const extras = buildRecommendations(persona, sqt as any);
+    for (const e of extras) {
+      if (!recs.includes(e)) recs.push(e);
+    }
+  }
 
   // Analyst and Compliance always want the breakdown table as secondary
   const needsTable = persona === 'Analyst' || persona === 'Compliance';

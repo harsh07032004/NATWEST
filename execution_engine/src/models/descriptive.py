@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from src.core.schema import base_response
-from src.models.utils import load_csv, apply_filters
+from src.models.utils import load_csv, apply_filters, resolve_secure_path
 
 
 def descriptive_model(payload):
@@ -19,13 +19,8 @@ def descriptive_model(payload):
         date_col   = schema.get("date_col", "Order Date")
         dataset_path = blueprint["dataset"]
 
-        # Resolve the absolute path from the execution engine root
-        project_root = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
-        )
-        final_path = os.path.join(project_root, dataset_path)
-        if not os.path.exists(final_path):
-            final_path = os.path.join(project_root, "data", dataset_path)
+        # ── Resolve path ────────────────────────────────────────────
+        final_path = resolve_secure_path(dataset_path)
 
         # ── Load & prepare ──────────────────────────────────────────
         df = load_csv(final_path, date_col)

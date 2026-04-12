@@ -154,22 +154,28 @@ function adaptEngineOutput(raw: Record<string, unknown>): MLOutputContract {
 export const ChatContainer: React.FC = () => {
   const {
     messages, addMessage, updateMessage,
-    currentPersona, setIsLoading, userId, conversationId,
+    currentPersona, setIsLoading, userId, conversationId, datasetRef,
   } = useAppContext();
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
+
     // 1️⃣ Add user message immediately
     const userMsgId = `user_${Date.now()}`;
-    addMessage({ id: userMsgId, sender: 'user', text, rawQuery: text });
+    addMessage({ id: userMsgId, sender: 'user', text: trimmed, rawQuery: trimmed });
 
     // 2️⃣ Add AI placeholder (loading state)
     const aiMsgId = `ai_${Date.now() + 1}`;
-    addMessage({ id: aiMsgId, sender: 'ai', isLoading: true, rawQuery: text });
+    addMessage({ id: aiMsgId, sender: 'ai', isLoading: true, rawQuery: trimmed });
     setIsLoading(true);
 
     try {
@@ -223,6 +229,7 @@ export const ChatContainer: React.FC = () => {
       });
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 

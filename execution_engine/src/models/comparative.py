@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from src.core.schema import base_response
-from src.models.utils import load_csv, apply_filters
+from src.models.utils import load_csv, apply_filters, resolve_secure_path
 
 
 def comparative_model(payload):
@@ -20,12 +20,7 @@ def comparative_model(payload):
         comparison_type = payload["analytical_intent"].get("comparison_type", "Category")
 
         # ── Resolve path ────────────────────────────────────────────
-        project_root = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
-        )
-        final_path = os.path.join(project_root, dataset_path)
-        if not os.path.exists(final_path):
-            final_path = os.path.join(project_root, "data", dataset_path)
+        final_path = resolve_secure_path(dataset_path)
 
         # ── Load & prepare ──────────────────────────────────────────
         df = load_csv(final_path, date_col)

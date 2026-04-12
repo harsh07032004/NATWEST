@@ -195,6 +195,15 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({ response, onActionCl
 
       {/* Top-right badges */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        {/* Debug: Query Type Tags */}
+        <div className="flex gap-1 mr-2 no-speech">
+          {(Array.isArray(response.queryType) ? response.queryType : []).map((qt, i) => (
+            <span key={i} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-mono text-slate-500 border border-slate-200 uppercase tracking-tighter">
+              {qt}
+            </span>
+          ))}
+        </div>
+        
         <span className={`persona-chip persona-chip-${currentPersona.toLowerCase()}`}>
           {response.personaLabel}
         </span>
@@ -207,6 +216,20 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({ response, onActionCl
           <Volume2 size={15} />
         </button>
       </div>
+
+      {/* Warning Banner (Security / System execution alerts) */}
+      {response._originalInsight?.warnings && response._originalInsight.warnings.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1 mb-3">
+          <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
+            <AlertCircle size={16} /> System Warnings
+          </div>
+          <ul className="list-disc pl-5 text-sm text-red-600 font-medium">
+            {response._originalInsight.warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Core blocks (headline, audit, chart, kpi, insight, table, secondary_chart) */}
       {coreBlocks.map((block, i) => {
@@ -233,7 +256,7 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({ response, onActionCl
           return <KpiStrip key={i} data={block} />;
         }
 
-        if (block.type === 'chart' && block.chartData && block.chartType) {
+        if (block.type === 'chart' && block.chartData && block.chartData.length > 0 && block.chartType) {
           return (
             <div className="response-block" key={i}>
               {block.content && (
@@ -244,7 +267,7 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({ response, onActionCl
           );
         }
 
-        if (block.type === 'secondary_chart' && block.chartData && block.chartType) {
+        if (block.type === 'secondary_chart' && block.chartData && block.chartData.length > 0 && block.chartType) {
           return (
             <div key={i} className="response-block secondary-visual">
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Supporting View</p>

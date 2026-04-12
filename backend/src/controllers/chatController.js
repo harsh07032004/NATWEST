@@ -37,11 +37,22 @@ const listConversations = async (req, res) => {
 const saveTurn = async (req, res) => {
   try {
     const { conversation_id, message } = req.body;
-    await Conversation.findOneAndUpdate(
-      { conversation_id: conversation_id },
-      { $push: { messages: message } },
-      { upsert: true, returnDocument: 'after' }
+    
+    // Attempt to update an existing message with the same ID
+    const updateResult = await Conversation.updateOne(
+      { conversation_id, "messages.message_id": message.message_id },
+      { $set: { "messages.$": message } }
     );
+
+    if (updateResult.matchedCount === 0) {
+      // Message doesn't exist yet, push it
+      await Conversation.updateOne(
+        { conversation_id },
+        { $push: { messages: message } },
+        { upsert: true }
+      );
+    }
+
     res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error saving message:', error);

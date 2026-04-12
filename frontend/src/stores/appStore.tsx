@@ -177,10 +177,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 isLoading:  false,
               };
             });
+            
+          // Deduplicate by ID to handle existing "dirty" history in DB
+          const uniqueRestored = restored.filter((msg, index, self) =>
+            index === self.findIndex((m) => m.id === msg.id)
+          );
 
-          if (restored.length > 0) {
-            setMessages(restored);
-            persistMessages(restored);
+          if (uniqueRestored.length > 0) {
+            setMessages(uniqueRestored);
+            persistMessages(uniqueRestored);
           }
         }
       } catch (err) {
@@ -207,7 +212,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // This prevents saving empty AI placeholders to MongoDB.
   const addMessage = useCallback(
     (m: ChatMessage) => {
-      setMessages(prev => [...prev, m]);
+      setMessages(prev => {
+        if (prev.some(msg => msg.id === m.id)) return prev;
+        return [...prev, m];
+      });
       if (m.sender === 'user') {
         void persistMsg(m, userId, conversationId);
       }

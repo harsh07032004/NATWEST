@@ -7,7 +7,9 @@
 - **Conversational Analytics:** Chat interface that accepts natural language queries.
 - **Persona-Driven Explanations:** Real-time LLM-driven modifications of summaries adapting to Beginner, Analyst, Executive, and other personas.
 - **Deterministic Math Engine:** Pure mathematical computation using statistical processing (Pandas) decoupled from LLM hallucinations.
-- **Multi-Intent Analysis:** Supports Descriptive (current state), Comparative (A vs B), Diagnostic (root causality), and Predictive (trend forecasting) query types.
+- **Multi-Intent Analysis:** Supports identifying multiple intents (e.g. Descriptive + Diagnostic) in a single query and merging the execution results.
+- **Dynamic Dataset Pipeline:** Extensible execution engine parameterized to evaluate static CSV files or dynamically generated user-uploaded datasets.
+- **Data Security Guardrails:** Includes a localized execution sandbox that strictly blocks Local File Inclusion (LFI), system state tampering, and LLM prompt/jailbreak injection natively.
 - **Microservices Architecture:** Fully decoupled systems enabling parallel execution, graceful error handling, and robust scalability.
 - **Graceful Fallbacks:** Automated mock-data adapters ensure the UI never crashes even if backend connections fail.
 
@@ -15,7 +17,7 @@
 The system relies on a secure **3-pillar Microservice Monorepo** pattern:
 1. **React Frontend (Port 3000):** A highly responsive, Vite-powered UI handling the chat view, visualizations, and Gemini-based persona summaries. 
 2. **Node.js Orchestrator (Port 5000):** The central nervous system. It compiles natural language (via Groq API) into a strict Data Blueprint Execution Plan and handles API routing, MongoDB tracking, and graceful degradation.
-3. **Python FastAPI Engine (Port 8000):** A deterministic execution layer. It receives the JSON Execution Plan from the Orchestrator, safely runs immutable mathematical operations (via Pandas slice evaluations) over the dataset, and returns pure numbers/arrays without any text generation.
+3. **Python FastAPI Engine (Port 8000):** A deterministic execution layer. It receives the JSON Execution Plan from the Orchestrator, dynamically injects user-uploaded or global CSV data safely avoiding path traversal attacks, and returns pure numbers/arrays without any text generation.
 
 ## Tech Stack
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons, Framer Motion
@@ -72,6 +74,6 @@ To explore the system, type the following natural language questions into the Ch
 
 ## Limitations & Future Improvements
 While structurally complete, there are several open areas for optimization:
-- **Static Dataset Reliance:** The Python Math Engine currently operates over local CSV snapshots. Future iterations should bridge live read-only SQL queries via DuckDB/Snowflake.
+- **Database Reliance:** The Python Math Engine natively targets flat files (`data/` or `uploads/`). Future iterations should securely implement live read-only SQL queries via DuckDB/Snowflake pipelines mapping database configurations into the Execution Plan schema mapping.
 - **Graphing Interactivity:** Chart definitions currently rely on fixed visual structures and simple fallback tables; deeper Recharts implementations are planned to support complex multi-axis combinations.
 - **User Authentication:** No hard session JWTs or OAuth systems are configured yet, relying purely on mock session states.

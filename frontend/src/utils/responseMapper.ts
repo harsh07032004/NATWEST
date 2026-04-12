@@ -59,47 +59,57 @@ function pickSummary(persona: Persona, ml: MLOutputContract): string {
 function buildInsightText(persona: Persona, ml: MLOutputContract): string {
   const primary = ml.key_metrics[0];
   const qt = ml.query_type[0] ?? 'Descriptive';
+  const hasDiag = ml.diagnostics.length > 0;
+  const topBreakdown = ml.breakdown.slice(0, 3).map(b => `${b.label}: ${b.value.toLocaleString()} ${b.unit ?? ''}`).join(', ');
 
   switch (persona) {
     case 'Beginner':
-      return ml.diagnostics[0]
+      return hasDiag
         ? `Here's the key finding: ${ml.diagnostics[0]}`
-        : 'Things look mostly normal. Keep an eye on the chart.';
+        : primary
+          ? `Your ${primary.label} is ${primary.value.toLocaleString()} ${primary.unit ?? ''}. Things look stable — check the chart for the full picture.`
+          : 'Things look mostly normal. Keep an eye on the chart.';
 
     case 'Everyday':
-      return primary
-        ? `${primary.label} is at ${primary.value.toLocaleString()} ${primary.unit ?? ''}. ${ml.diagnostics[0] ?? ''}`
-        : 'Review the chart and act on the biggest bar.';
+      if (primary) {
+        const base = `${primary.label} is at ${primary.value.toLocaleString()} ${primary.unit ?? ''}.`;
+        return hasDiag ? `${base} ${ml.diagnostics[0]}` : `${base} ${topBreakdown ? `Top segments: ${topBreakdown}.` : 'Review the chart for details.'}`;
+      }
+      return 'Review the chart and act on the biggest bar.';
 
     case 'SME':
-      if (qt === 'Diagnostic') {
+      if (qt.toLowerCase() === 'diagnostic' && hasDiag) {
         return `Drivers: ${ml.diagnostics.slice(0, 2).join(' | ')}. Align with your team on the largest contributor.`;
       }
       return primary
-        ? `KPI: ${primary.label} at ${primary.value.toLocaleString()} ${primary.unit ?? ''} (${primary.delta_pct != null ? `${primary.delta_pct.toFixed(1)}% vs prior` : 'baseline'}). Review against plan.`
+        ? `KPI: ${primary.label} at ${primary.value.toLocaleString()} ${primary.unit ?? ''} (${primary.delta_pct != null ? `${primary.delta_pct.toFixed(1)}% vs prior` : 'baseline'}). ${topBreakdown ? `Key breakdown: ${topBreakdown}.` : 'Review against plan.'}`
         : 'Check the breakdown against your operational targets.';
 
     case 'Executive':
-      if (qt === 'Diagnostic') return `Root cause: ${ml.diagnostics[0] ?? 'identified in chart.'}. Evaluate corrective action.`;
+      if (qt.toLowerCase() === 'diagnostic') return `Root cause: ${hasDiag ? ml.diagnostics[0] : 'see breakdown chart for category-level drivers.'}. Evaluate corrective action.`;
       if (primary?.delta_pct != null) {
         const dir = primary.delta_pct >= 0 ? 'above' : 'below';
         return `${Math.abs(primary.delta_pct).toFixed(1)}% ${dir} prior — ${Math.abs(primary.delta_pct) > 10 ? 'material variance requiring attention.' : 'within acceptable tolerance.'}`;
       }
-      return 'Review strategic implications and assign ownership.';
+      return primary
+        ? `${primary.label}: ${primary.value.toLocaleString()} ${primary.unit ?? ''}. Review strategic implications and assign ownership.`
+        : 'Review strategic implications and assign ownership.';
 
     case 'Analyst': {
       const vals = ml.key_metrics.map(m => `${m.label}: ${m.value.toLocaleString()} ${m.unit ?? ''}`).join(' | ');
       const delta = primary?.delta != null
         ? `  Δ = ${primary.value.toLocaleString()} − ${(primary.prev_value ?? 0).toLocaleString()} = ${primary.delta.toLocaleString()} (${primary.delta_pct?.toFixed(2) ?? '?'}%)`
         : '';
-      return `${vals}.${delta} Diagnostics: ${ml.diagnostics.join('; ')}`;
+      const diagText = hasDiag ? ` Diagnostics: ${ml.diagnostics.join('; ')}` : (topBreakdown ? ` Breakdown: ${topBreakdown}.` : '');
+      const parts = [vals, delta, diagText].map(s => s.trim()).filter(Boolean);
+      return parts.join('. ') || 'Analysis complete — see chart for details.';
     }
 
     case 'Compliance':
       return `Source: ML Analytics Engine | Timestamp: ${new Date().toLocaleString()} | Confidence: ${(ml.confidence * 100).toFixed(1)}%. Values are literal system-of-record outputs. ${ml.limitations.join(' ')}`;
 
     default:
-      return ml.summary;
+      return ml.summary || (primary ? `${primary.label}: ${primary.value.toLocaleString()} ${primary.unit ?? ''}` : 'Analysis complete.');
   }
 }
 
@@ -186,7 +196,7 @@ export function buildResponseFromInsight(
 
   // ── BLOCK 4: SECONDARY CHART from chart_data[1] ────────────────
   const secondaryChart = ml.chart_data[1];
-  if (secondaryChart && (persona === 'Analyst' || persona === 'Compliance' || persona === 'SME')) {
+  if (secondaryChart && secondaryChart.data && secondaryChart.data.length > 0 && (persona === 'Analyst' || persona === 'Compliance' || persona === 'SME')) {
     blocks.push({
       type: 'secondary_chart',
       content: `${secondaryChart.title ?? secondaryChart.type}`,
@@ -265,7 +275,7 @@ export function buildResponseFromInsight(
     blocks,
     confidenceLabel: confState,
     personaLabel:    PERSONA_LABELS[persona],
-    queryType:       ml.query_type,
+    queryType:       Array.isArray(ml.query_type) ? ml.query_type : [String(ml.query_type ?? 'Descriptive')],
     ttsHeadline:     headlineContent,
     suggestedVisual: primaryChart?.type,
     evidence,

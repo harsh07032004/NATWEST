@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from src.core.schema import base_response
-from src.models.utils import load_csv, apply_filters
+from src.models.utils import load_csv, apply_filters, resolve_secure_path
 
 
 def diagnostic_model(payload):
@@ -21,12 +21,7 @@ def diagnostic_model(payload):
         dimensions = schema.get("dimension_cols", ["Category", "Sub-Category", "Region"])
 
         # ── Resolve path ────────────────────────────────────────────
-        project_root = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
-        )
-        final_path = os.path.join(project_root, dataset_path)
-        if not os.path.exists(final_path):
-            final_path = os.path.join(project_root, "data", dataset_path)
+        final_path = resolve_secure_path(dataset_path)
 
         # ── Load & prepare ──────────────────────────────────────────
         df = load_csv(final_path, date_col)
@@ -114,6 +109,29 @@ def diagnostic_model(payload):
                         "direction":        "increase" if row["delta"] > 0 else "decrease",
                         "evidence":         f"{row[col]} contributed ${round(float(row['delta']), 2)} change",
                     })
+        else:
+            # Fallback: No baseline available — analyze variance across dimensions
+            # using overall mean as a reference point
+            response["warnings"].append("No baseline data found for the given date range.")
+            if not current_df.empty:
+                overall_mean = current_df[metric].mean()
+                for col in dimensions[:2]:  # Limit to top 2 dimensions for performance
+                    if col not in current_df.columns:
+                        continue
+                    grp = current_df.groupby(col)[metric].sum().reset_index()
+                    grp = grp.sort_values(metric, ascending=False)
+                    grp_mean = grp[metric].mean()
+
+                    for _, row in grp.head(3).iterrows():
+                        deviation = row[metric] - grp_mean
+                        causes.append({
+                            "cause":            str(row[col]),
+                            "dimension":        col,
+                            "impact":           "high" if row[metric] > 1.5 * grp_mean else "medium",
+                            "contribution_pct": round((row[metric] / current_total) * 100, 2),
+                            "direction":        "above average" if deviation > 0 else "below average",
+                            "evidence":         f"{row[col]}: ${round(float(row[metric]), 2)} ({round((row[metric] / current_total) * 100, 1)}% of total)",
+                        })
 
         # Deduplicate causes by cause label
         seen = set()

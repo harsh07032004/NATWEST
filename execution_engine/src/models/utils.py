@@ -1,4 +1,38 @@
 import pandas as pd
+import os
+
+class SecurityException(Exception):
+    """Raised when an operation attempts to breach path security guards."""
+    pass
+
+def resolve_secure_path(requested_path: str) -> str:
+    """
+    Safely resolves the absolute path of the requested dataset.
+    Verifies that the target path is strictly within the allowed data directories 
+    ('data' or 'uploads') to prevent Path Traversal (LFI) attacks.
+    """
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    
+    # Strip leading slashes to prevent absolute path override trick
+    clean_path = requested_path.lstrip("/\\")
+    
+    final_path = os.path.abspath(os.path.join(project_root, clean_path))
+    
+    # Allowed directories
+    allowed_zones = [
+        os.path.join(project_root, "data"),
+        os.path.join(project_root, "uploads")
+    ]
+    
+    # Ensure final_path starts with one of the allowed zones
+    is_safe = any(final_path.startswith(zone) for zone in allowed_zones)
+    
+    if not is_safe:
+        raise SecurityException(
+            f"Path Traversal Blocked: Requested dataset '{requested_path}' resolves outside allowed safe zones."
+        )
+        
+    return final_path
 
 
 def load_csv(path: str, date_col: str) -> pd.DataFrame:

@@ -176,10 +176,12 @@ export const PresentationShell: React.FC = () => {
     voiceMode, setVoiceMode,
     isRestoring, hasMoreHistory, loadMoreHistory,
     startFreshConversation, logoutUser,
+    datasetRef,
   } = useAppContext();
 
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const isSubmittingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -205,22 +207,25 @@ export const PresentationShell: React.FC = () => {
 
   // ── Core query pipeline ─────────────────────────────────────────
   const processQuery = async (queryText: string) => {
-    if (!queryText.trim() || isLoading) return;
+    const trimmed = queryText.trim();
+    if (!trimmed || isLoading || isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
+    setInput(''); // Clear immediately to discourage double typing
 
     const userMsgId = newMessageId();
-    addMessage({ id: userMsgId, sender: 'user', text: queryText.trim(), rawQuery: queryText.trim() });
+    addMessage({ id: userMsgId, sender: 'user', text: trimmed, rawQuery: trimmed });
 
     const aiMsgId = newMessageId();
     addMessage({ id: aiMsgId, sender: 'ai', isLoading: true });
     setIsLoading(true);
-    setInput('');
 
     try {
       // 1. Classify intent
       const intent = await classifyIntent(queryText, currentPersona);
 
       // --- Conversational Flow ---
-      if (intent.query_type === 'Conversational') {
+      if (intent.query_type.includes('Conversational')) {
         const { handleConversationalQuery } = await import('../services/geminiService');
         const text = await handleConversationalQuery(queryText, currentPersona);
         updateMessage(aiMsgId, {
@@ -233,7 +238,7 @@ export const PresentationShell: React.FC = () => {
 
       // --- Analytical Flow ---
       // 2. Get insight (MLOutputContract) from adapter
-      const insight = await getInsightResponse(queryText, intent, currentPersona);
+      const insight = await getInsightResponse(queryText, intent, currentPersona, datasetRef || 'data/Superstore.csv');
 
       // 3. Build persona-shaped rendered response
       const response = buildResponseFromInsight(currentPersona, insight);
@@ -250,6 +255,7 @@ export const PresentationShell: React.FC = () => {
       updateMessage(aiMsgId, { isLoading: false, response: undefined });
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 

@@ -32,9 +32,9 @@ export interface OnboardingAnswers {
   visual: 'gauge' | 'line' | 'table';
 }
 
-// === GEMINI INTENT (from classification service) ===
+// === LLM INTENT (from classification service) ===
 export interface GeminiIntent {
-  query_type: QueryType;
+  query_type: QueryType[];  // e.g. ['Descriptive', 'Diagnostic'] — multiple categories per query
   metric: string;
   persona_tone: string;
   suggested_visual: SuggestedVisual;
