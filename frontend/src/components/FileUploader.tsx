@@ -27,7 +27,7 @@ export const FileUploader: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const API_URL = (import.meta.env.VITE_CHAT_API_URL as string) || 'http://localhost:5000';
+  const API_URL = (import.meta.env.VITE_CHAT_API_URL as string);
 
   // ── Enterprise continue (Superstore) ──────────────────────────────
   const handleEnterpriseContinue = () => {
