@@ -213,5 +213,5 @@ Bolt isn't just a technical prototype; it solves real enterprise bottlenecks:
 
 ---
 <div align="center">
-  <i>Developed by Team Bolt for the NatWest Hackathon 2026</i>
+  <i>Bolt by Algo-Vengers for the NatWest Hackathon 2026</i>
 </div>
