@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./logo.png" alt="Bolt Logo" width="250" />
+  <img src="Futuristic BOLT logo with lightning bolt (1).png" alt="Bolt Logo" width="250" />
 
   # Bolt — Unified Analytical Platform
   
