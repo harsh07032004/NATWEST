@@ -117,7 +117,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!datasetRef) return;
     const fetchSchema = async () => {
       try {
-        const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+        const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL;
         const res = await fetch(`${CHAT_API_URL}/api/dataset/profile`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -140,7 +140,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const fetchProfile = async () => {
       try {
-        const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+        const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL;
         const res = await fetch(`${CHAT_API_URL}/api/users`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -338,7 +338,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [userId, currentPersona, datasetRef]);
 
   // ── Login ────────────────────────────────────────────────────────
-  const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+  const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL;
 
   const loginUser = useCallback(async (username: string) => {
     setUserId(username);

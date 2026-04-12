@@ -5,7 +5,7 @@ import type { OnboardingAnswers, Persona } from '../types';
 import { getUserId } from '../services/sessionService';
 import { useTranslation } from 'react-i18next';
 
-const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL;
 
 // ================================================================
 // ================================================================

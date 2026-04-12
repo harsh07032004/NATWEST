@@ -5,7 +5,7 @@ import { MessageBubble } from './MessageBubble';
 import { buildResponseFromInsight } from '../../utils/responseMapper';
 import type { MLOutputContract, MetricPoint, ChartDataContract } from '../../types';
 
-const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL;
 
 /**
  * Adapts the raw Superstore execution engine response into the strict

@@ -18,7 +18,7 @@
 import type { UserConversationRecord, ConversationMessage, ChatMessage } from '../types';
 import { drainEvents } from './feedbackService';
 
-const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'http://localhost:5000';
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL;
 
 const CONVS_KEY    = (userId: string) => `t2d_convs_${userId}`;
 const MESSAGES_KEY = 't2d_messages';
