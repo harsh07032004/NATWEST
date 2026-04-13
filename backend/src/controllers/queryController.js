@@ -2,17 +2,28 @@ const { generateExecutionPlan } = require("../services/orchestratorService");
 const axios = require("axios");
 
 // Retry function
-const callExecutionEngine = async (url, payload, retries = 3) => {
-  try {
-    const response = await axios.post(url, payload, { timeout: 20000 });
-    return response;
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`🔁 Retrying engine... attempts left: ${retries}`);
-      await new Promise((res) => setTimeout(res, 3000));
-      return callExecutionEngine(url, payload, retries - 1);
+const callExecutionEngine = async (url, payload) => {
+  const MAX_RETRIES = 4;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`🚀 Attempt ${attempt}: Calling Execution Engine`);
+
+      const response = await axios.post(url, payload, {
+        timeout: 60000, // 60 sec (IMPORTANT)
+      });
+
+      return response;
+    } catch (error) {
+      console.error(`❌ Attempt ${attempt} failed`);
+
+      if (attempt === MAX_RETRIES) {
+        throw error;
+      }
+
+      console.log("⏳ Waiting 15 seconds before retry...");
+      await new Promise((res) => setTimeout(res, 15000));
     }
-    throw error;
   }
 };
 
@@ -61,10 +72,15 @@ const processQuery = async (req, res) => {
 
       pureMathData = mathResponse.data;
     } catch (mathError) {
-      console.error("🔥 FULL ENGINE ERROR:", mathError);
+      console.error("🔥 ENGINE ERROR DETAILS:", {
+        message: mathError.message,
+        code: mathError.code,
+        response: mathError.response?.data,
+      });
 
       return res.status(503).json({
-        message: "Execution Engine is waking up, please try again...",
+        message: "Execution Engine error",
+        details: mathError.response?.data || mathError.message,
       });
     }
 

@@ -3,7 +3,7 @@ from typing import Dict, Any
 import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from src.models.utils import resolve_secure_path
+import os
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -51,18 +51,25 @@ def analyze_schema(req: ProfileRequest) -> Dict[str, Any]:
     try:
         logger.info("🔥 /analyze_schema HIT")
 
-        # ✅ Resolve path securely
-        final_path = resolve_secure_path(req.dataset_ref)
+        # ✅ FIXED PATH (NO resolve_secure_path)
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        final_path = os.path.join(BASE_DIR, "../../", req.dataset_ref)
 
-        # ✅ Load only sample (IMPORTANT)
+        print("📂 Dataset path:", final_path)
+        print("✅ Exists:", os.path.exists(final_path))
+
+        if not os.path.exists(final_path):
+            raise HTTPException(status_code=400, detail="Dataset not found")
+
+        # ✅ Load sample only
         df_sample = universal_read_csv(final_path, nrows=2000)
 
         if df_sample is None or df_sample.empty:
             raise HTTPException(status_code=400, detail="Dataset is empty or invalid")
 
     except Exception as e:
-        logger.error(f"Error reading dataset: {str(e)}")
-        raise HTTPException(status_code=400, detail="Invalid dataset reference")
+        logger.error(f"❌ Error reading dataset: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
     # ================== COLUMN ANALYSIS ==================
     date_col = ""
@@ -100,7 +107,7 @@ def analyze_schema(req: ProfileRequest) -> Dict[str, Any]:
     if not date_col and dimension_cols:
         date_col = dimension_cols[0]
 
-    # ================== DATE RANGE (SAFE VERSION) ==================
+    # ================== DATE RANGE ==================
     date_min = ""
     date_max = ""
 
