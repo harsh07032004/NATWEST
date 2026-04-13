@@ -1,72 +1,58 @@
 <div align="center">
-  <img src="Futuristic BOLT logo with lightning bolt (1).png" alt="Bolt Logo" width="250" />
+  <img src="Futuristic BOLT logo with lightning bolt (1).png" alt="Bolt Logo" width="150" height="150" />
 
   # Bolt — Unified Analytical Platform
   
-  **Your AI-powered data analyst. Talk to your data in plain language, eliminate AI hallucinations, and get instant, rigorous, persona-aware insights.**
+  **Ask questions in plain language. Get rigorous, persona-aware insights powered by a decoupled LLM architecture and a pure-math Python execution engine.**
 
-  <br />
-  <a href="https://talktodata-mt63.onrender.com/">
-    <img src="https://img.shields.io/badge/LIVE_DEMO-ACCESS_ENTERPRISE_PLATFORM_HERE-2ea44f?style=for-the-badge" alt="Live Demo" />
-  </a>
-  <br />
-
-  [![License](https://img.shields.io/badge/License-Internal-blue.svg)](https://opensource.org/licenses/MIT)
+  [![License: MIT](https://img.shields.io/badge/License-Internal-blue.svg)](https://opensource.org/licenses/MIT)
   [![React](https://img.shields.io/badge/React-19.0-61dafb.svg?logo=react)](https://reactjs.org/)
   [![Node.js](https://img.shields.io/badge/Node.js-18.x-339933.svg?logo=nodedotjs)](https://nodejs.org/)
   [![Python](https://img.shields.io/badge/Python-3.10-3776AB.svg?logo=python)](https://www.python.org/)
   [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF.svg?logo=vite)](https://vitejs.dev/)
+
+  [Features](#key-features) •
+  [Architecture](#architecture-and-workflow) •
+  [Project Structure](#project-structure) •
+  [Quick Start](#complete-setup-and-installation) •
+  [Deployment](#deployment-specifications)
 </div>
 
 ---
 
-## The Problem & Our Solution
+## Introduction
 
-In enterprise banking and finance, **Large Language Models (LLMs) have a catastrophic flaw: they hallucinate mathematics.** You cannot trust an LLM to calculate a portfolio's 6-month forecast or identify statistical anomalies with a z-score. Furthermore, professional data visualization tools (like PowerBI or Tableau) are highly restrictive to non-technical users and lack true conversational capabilities.
+**Bolt** is an enterprise-grade, conversational analytics platform developed for the NatWest Hackathon. It bridges the gap between natural language processing and complex data analytics. Whether you're an Executive looking for high-level summaries or an Analyst diving into predictive trends, Bolt morphs to fit your needs. It natively supports 11 languages, voice-to-text, and a fully blind-accessible audio mode.
 
-**Bolt solves this.** 
+## Key Features
 
-Built for the **NatWest Hackathon**, Bolt introduces a **Deterministic Decoupled Architecture**. 
-We use lightning-fast Groq LLMs *only* to understand human intent (the "What"). The actual computation (the "Math") is entirely delegated to a rigorous, scalable Python backend running pure deterministic algorithms. The result is returned to an ultra-modern React interface that dynamically builds rich, interactive charts. **No hallucinations, zero math errors, just enterprise-grade insights on command.**
+### Powerful Data Engine
+- **Universal CSV Loader**: Automatically detects encodings (UTF-8, ISO-8859, etc.) and interprets 7 different date formats.
+- **Advanced Analytics**:
+  - **Diagnostic**: Z-Score Anomaly Detection with auto-root-cause analysis.
+  - **Predictive**: 6-Month forecasting with MAPE calculations and confidence intervals.
+  - **Comparative**: Period-Over-Period delta analysis with dynamic metric-aware titles.
+- **Rich Visualizations**: Recharts-based multi-tier render engine supporting Waterfalls, Diverging Bars, Composed Charts, and more.
 
----
+### Universal Accessibility
+- **Global i18n**: Native support for 11 languages (English, Hindi, Bengali, Telugu, Marathi, Tamil, Spanish, French, Mandarin, Arabic, German).
+- **RTL Support**: Flawless Arabic Right-to-Left layout rendering.
+- **Blind Mode (A11y)**: Hold `Spacebar` for 5s to activate an immersive Web Speech API-driven blind mode with vocal navigation.
+- **Voice Input**: Speak your analytics questions natively into the microphone.
 
-## Comprehensive Feature Set
-
-### 1. Zero-Hallucination Mathematical Engine
-- **Deterministic Python Execution:** Natural language queries are transformed into structured ML job payloads. All calculations (aggregations, forecasts, standard deviations) are securely processed via `Pandas` and `Numpy` in our FastAPI layer.
-- **Dynamic Schema Profiling:** When you upload a CSV, Bolt immediately reads the column types, detects complex date formats across 7 global standards, and passes a "Data Dictionary" to the LLM. This guarantees the AI knows exactly what columns it is allowed to ask the Python engine for, preventing hallucinated variables.
-- **Universal CSV Loader:** Seamlessly handles ISO-8859, UTF-8, and dirty encodings without requiring users to pre-clean their data.
-
-### 2. Multi-Tiered Advanced Analytics
-- **Descriptive Analysis:** Instant multi-dimensional aggregation that enables you to summarize massive datasets effortlessly. Bolt dynamically groups and calculates complex temporal and categorical metrics (e.g., *"Show me a breakdown of total sales by region and user category"*).
-- **Diagnostic Analysis (Root Cause):** Uses automatic **Z-Score Anomaly Detection** to scan datasets for statistical outliers. It doesn't just flag them; it runs a contribution analysis to tell you *why* the anomaly happened (e.g., *"Sales dipped 15% due to a massive drop in the Technology sector in the North region"*).
-- **Predictive Analysis:** Implements a rolling **6-Month Multi-Period Forecast** that runs over historical time-series data. It automatically calculates the Mean Absolute Percentage Error (MAPE) to grade its own confidence.
-- **Comparative Analysis (PoP):** Deep Period-Over-Period delta tracking to instantly measure growth or decay between discrete timeframes.
-
-### 3. State-of-the-Art Dynamic Visualizations
-- **Recharts-Driven Coordinates:** The Python engine doesn't just return numbers; it returns an intelligent `MLOutputContract` containing exact `x` and `y` coordinate structures designed for React.
-- **Auto-Selecting Chart Typer:** Bolt dynamically selects the optimal chart type based on the statistical calculation. It supports deep visuals including **Waterfalls, Diverging Bars, Composed Area/Lines, and Multi-Axis plots.**
-- **Instantly Responsive:** Changing visual orientations or selecting different metrics re-renders instantly on the client UI without expensive re-queries to the server.
-
-### 4. Smart Persona Engine
-A CEO and a Data Engineer shouldn't get the same answer to the same question.
-- **6 Built-in Personas:** Switch seamlessly between *Beginner, Everyday, SME, Executive, Analyst,* and *Compliance* views.
-- **Offline Switching:** If you ask a question as an "Analyst" (seeing p-values and deep statistical nuance), you can swap to "Executive" to get a 2-sentence bottom line instantly. The UI re-interprets the underlying data without spending additional API tokens.
-
-### 5. Unmatched Universal Accessibility (A11y)
-- **Audio "Blind Mode":** Traditional charts are a black box for visually impaired employees. By holding the `Spacebar` for 5 seconds, Bolt activates a specialized mode using the Web Speech API to provide an immersive, self-voicing navigation interface that literally reads the insights out loud.
-- **Native Voice Input:** Integrated Speech-to-Text allows users to simply talk to their data, perfect for accessibility and executive mobile usage.
-- **Global 11-Language i18n:** Not just translated interfaces, but inherently language-aware LLM response generation in: *English, Hindi, Bengali, Telugu, Marathi, Tamil, Spanish, French, Mandarin, Arabic, and German.*
-- **Arabic RTL Support:** Total structural interface flipping to respect Right-To-Left language layouts natively.
+### Intelligent UX
+- **6 Persona Modes**: Switch instantly between Beginner, Everyday, SME, Executive, Analyst, and Compliance views. Responses automatically re-render without hitting the API again.
+- **Dynamic Schema Detection**: Instantly profiles uploaded CSVs to ground the LLM, preventing hallucinated variables.
+- **Session Persistence**: Continuous chats powered by MongoDB with a fast LocalStorage caching mechanism.
 
 ---
 
-## Architecture & System Workflow
+## Architecture and Workflow
 
-Bolt isolates rapid User Experience (Node/React) from deep computational friction (Python).
+Bolt utilizes a robust, decoupled 3-tier structure to isolate fast UX from heavy computation.
 
-### Core Infrastructure Diagram
+### Structural Breakdown
+
 ```mermaid
 graph LR
     A[Frontend: React 19] <-->|REST API| B(Backend: Node.js Orchestrator)
@@ -75,13 +61,21 @@ graph LR
     D <-->|Compute API| E[Groq LLM / Fast Models]
 ```
 
-| Sub-System | Domain / Port | Tech Stack | Responsibility |
+| Layer | Port | Stack | Purpose |
 |-------|------|-------|---------|
-| **Frontend UI** | Port `5173` | React 19, Vite, Tailwind | Presentation Shell, Persona Switcher, Chart Renderer, Voice I/O |
-| **Backend API** | Port `5000` | Node.js, Express, Mongoose | Auth, Session State, LLM Intent Routing, File Processing |
-| **Execution** | Port `8000` | Python 3, FastAPI, Pandas | Data processing, Forecasting algorithms, Anomaly mapping |
+| **Frontend** | `5173` | React, Vite, TS | UI, Persona Switcher, i18n, Web Speech API, Charting |
+| **Backend** | `5000` | Node.js, Express | LLM orchestration (Groq), Intent Classification, Auth |
+| **Engine** | `8000`| Python, FastAPI | Pure-math engine. Descriptive, Diagnostic, Predictive logic |
+
+### System Workflow
+
+1. **Client Interaction (Frontend Layer)**: Users interact through a React/Vite-based interface supporting multi-language inputs, voice recognition, and blind-accessible navigation.
+2. **Orchestration (Backend Layer)**: A Node.js backend manages user sessions, routes API requests, handles authentication via MongoDB, and performs initial query classification using a Groq-powered LLM.
+3. **Execution and Computation (ML Layer)**: A Python FastAPI engine receives the classified intents and executes deterministic statistical operations, predictive forecasting, or comparative analysis. It securely processes the data and generates a structured insight object.
+4. **Visualization**: The structured insight is returned through the backend to the frontend, which dynamically renders contextual Recharts-based visual graphs and textual summaries tailored to the user's selected persona.
 
 ### Data Validation Sequence
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -92,127 +86,179 @@ sequenceDiagram
     participant DB as MongoDB Atlas
     participant LLM as Groq LLM API
 
-    User->>Frontend: Upload Dataset & Submit Query
+    User->>Frontend: Upload Dataset & Submit Natural Language Query
     activate Frontend
-    Frontend->>Backend: POST /api/query (Query + Data Meta)
+    Frontend->>Backend: POST /api/query (User Intent + File Metadata)
     activate Backend
     
-    Backend->>DB: Fetch User Auth & Active Session State
+    Backend->>DB: Fetch Active Session & Request Associated Persona
+    activate DB
+    DB-->>Backend: Return Session Data
+    deactivate DB
     
-    Backend->>LLM: Pass Data Dictionary & Query for Intent Classification
+    Backend->>LLM: Classify Intent & Extract Parameters
     activate LLM
-    LLM-->>Backend: Return JSON (Intent: Predictive, Columns: ['Sales', 'Date'])
+    LLM-->>Backend: Return Intent (Descriptive / Predictive / Diagnostic)
     deactivate LLM
     
-    Backend->>Engine: Send Computed Job Payload
+    Backend->>Engine: Initiate Job Payload (Intent Context, Data Reference)
     activate Engine
-    Engine->>Engine: Run Mathematical Models (No LLM Involvement)
-    Engine-->>Backend: Return `InsightObject` (Data points + Statistical Context)
+    Engine->>Engine: Execute Statistical / ML Operations
+    Engine-->>Backend: Return Computed Insight Object (Data points + Text)
     deactivate Engine
     
-    Backend->>Frontend: Stream Formatted Response
+    Backend->>Frontend: Return Formatted Response Payload & Chart Coordinates
     deactivate Backend
     
-    Frontend->>User: Render Persona Answer & Recharts Component
+    Frontend->>User: Render Persona-Oriented Analysis & Interactive Visualizations
     deactivate Frontend
 ```
 
 ---
 
-## Physical Project Structure
+## Project Structure
 
 ```text
 Natwest-Hackathon/
-├── backend/                # Node.js Orchestration Layer
+├── backend/
 │   └── src/
-│       ├── controllers/    # API Request Handlers 
-│       ├── models/         # MongoDB Schemas (User, Session)
-│       ├── routes/         # Express endpoints
-│       ├── services/       # Groq Interface & Job Dispatcher
-│       └── server.js       # App Entry
-├── execution_engine/       # Python Mathematical ML Layer
-│   ├── data/               # Persistent Datasets
-│   ├── uploads/            # Temporary CSV Blob Store
+│       ├── controllers/
+│       ├── models/
+│       ├── routes/
+│       ├── services/
+│       ├── utils/
+│       └── server.js
+├── execution_engine/
+│   ├── data/
+│   ├── uploads/
 │   └── src/
-│       ├── api/            # FastAPI Endpoints
-│       ├── core/           # Data Profiling & Cleaning Core
-│       ├── models/         # Predictive, Diagnostic & Standard Logic
-│       └── main.py         # Uvicorn Setup
-├── frontend/               # React 19 Presentation Layer
+│       ├── api/
+│       ├── core/
+│       ├── models/
+│       └── main.py
+├── frontend/
 │   └── src/
-│       ├── components/     # Reusable UI (Chat, Shell, Personas)
-│       ├── hooks/          # useBlindMode, useVoice
-│       ├── locales/        # 11 Language Translation JSONs
-│       ├── services/       # API Adapters Configuration
-│       ├── i18n.ts         # i18next State Management
-│       └── main.tsx        # React DOM Root
+│       ├── components/
+│       ├── hooks/
+│       ├── locales/
+│       ├── services/
+│       ├── stores/
+│       ├── utils/
+│       ├── i18n.ts
+│       ├── types.ts
+│       └── main.tsx
 └── scripts/
-    └── start_all.bat       # Lightning Windows Launcher
+    ├── start_all.bash
+    └── start_all.bat
 ```
 
 ---
 
-## Quick Start & Deployment
+## Complete Setup and Installation
 
-We've made booting a 3-tier enterprise platform locally as easy as running a single file.
+Ensure the following prerequisites are installed:
+- **Node.js** ≥ 18
+- **Python** ≥ 3.10
+- **MongoDB Atlas** connection string (or local MongoDB)
+- **Groq API Key** (Obtained via console.groq.com)
 
-> **LIVE DEMO:** Skip the local setup and experience the deployed application immediately here: **[https://talktodata-mt63.onrender.com/](https://talktodata-mt63.onrender.com/)**
-
-### Prerequisites
-- **Node.js** v18+ & **Python** 3.10+
-- **MongoDB** cluster (Atlas or Local)
-- **Groq API Key** (Free at console.groq.com)
-
-### Installation
-Clone the repository and set up your `.env` variables.
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/Harshitaaaaaaaaaa/Natwest-Hackathon
 cd Natwest-Hackathon
-
-# Set your env variables in backend/.env & frontend/.env (MONGODB_URI & GROQ keys)
 ```
 
-Install the required packages across sub-systems:
+### 2. Environment Configuration
+Create the necessary environment files for both the server and client instances.
+
+**Backend Configuration** (`backend/.env`):
+```env
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/
+GROQ_API_KEY=gsk_your_key_here
+PORT=5000
+EXECUTION_ENGINE_URL=http://localhost:8000
+```
+
+**Frontend Configuration** (`frontend/.env`):
+```env
+VITE_GROQ_API_KEY=gsk_your_key_here
+VITE_CHAT_API_URL=http://localhost:5000
+```
+
+### 3. Dependency Installation
+Run the following commands from the **root directory** of the project:
+
 ```bash
-cd frontend && npm install
-cd ../backend && npm install
+# Install Backend Dependencies
+cd backend && npm install
+
+# Install Frontend Dependencies
+cd ../frontend && npm install
+
+# Install Execution Engine Dependencies
 cd ../execution_engine && pip install -r requirements.txt
 ```
 
-### Execution
+---
 
-**For Windows (One-Click Boot):**
-Run the automated batch script to spin up the React server, Node Server, and Python Engine concurrently.
+## Execution Guide
+
+### Automated Startup (Windows Environments)
+For Windows users, we provide a unified launcher that handles all three tiers simultaneously.
+
 ```cmd
 scripts\start_all.bat
 ```
+This script initializes:
+- **Python ML Engine** (Port 8000)
+- **Node.js Backend** (Port 5000)
+- **React Frontend** (Port 5173)
 
-**For Mac/Linux (Multi-terminal Boot):**
+### Manual Startup (Cross-Platform)
+Initialize each tier in its own isolated terminal session:
+
+**Terminal 1: Python ML Engine**
 ```bash
-# Terminal 1: Boot Python ML Math Engine
-cd execution_engine && python -m uvicorn src.main:app --port 8000 --host 0.0.0.0
-
-# Terminal 2: Boot Node API
-cd backend && npm run dev
-
-# Terminal 3: Boot React UI
-cd frontend && npm run dev
+cd execution_engine
+python -m uvicorn src.main:app --port 8000 --host 0.0.0.0
 ```
 
-Navigate to [**http://localhost:5173**](http://localhost:5173) to enter the platform. 
+**Terminal 2: Node.js Backend**
+```bash
+cd backend
+node src/server.js
+```
 
-> **Note on Testing Data:** 
-> For evaluation and testing purposes, we have included sample datasets in the `execution_engine/data/` folder (e.g., `Superstore.csv`). When uploading a file in the UI to run your initial queries, please use this provided example data to experience the full range of Bolt's analytical capabilities.
+**Terminal 3: React Frontend**
+```bash
+cd frontend
+npm run dev
+```
+
+Once all services are active, access the platform via your web browser:
+**URL**: `http://localhost:5173`
+
 ---
 
-## Business Impact for NatWest
+## Sample Data for Testing
+To experience the full analytical power of Bolt, we have included high-quality datasets in the repository:
 
-Bolt isn't just a technical prototype; it solves real enterprise bottlenecks:
-1. **Immediate Productivity:** Reduces the time-to-insight from hours of analyst manual charting to literal seconds.
-2. **Defensible Accuracy:** By walling off the LLMs from doing math, NatWest can ensure that portfolio projections and internal reports aren't skewed by AI hallucinations.
-3. **True Inclusivity:** The platform adapts to the user—whether they speak Arabic, are visually impaired, or have absolutely no data science background, they get top-tier enterprise analytics at their fingertips.
+- **Retail Insights**: `data/Superstore.csv` (Best for Forecasting and Trend Analysis)
+- **Custom Uploads**: You can also upload any valid CSV file directly through the UI.
 
 ---
+
+## Deployment Specifications
+
+* **Backend and Engine**: Containerized for easy deployment to Render, AWS ECS, or Google Cloud Run.
+* **Database**: Managed MongoDB Atlas instance for session persistence and persona memory.
+* **Frontend**: Optimized for standard static site hosting (Vercel, Netlify, Amplify).
+
+---
+
+## License
+Created for the **NatWest Hackathon 2026**. Licensed under internal usage for Algo-Vengers.
+
 <div align="center">
-  <i>Bolt by Algo-Vengers for the NatWest Hackathon 2026</i>
+  <i>Developed with ❤️ by Team Bolt</i>
 </div>
